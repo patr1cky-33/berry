@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>고양이 빗질 게임</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Creepster&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #f5f1e8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            background: #faf8f3;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            border: 2px solid #e8e4d9;
+            cursor: none;
+        }
+
+        #cat {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 450px;
+            height: 450px;
+            will-change: transform;
+        }
+
+        #catBody {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* 게임오버 확대 애니메이션 */
+        #cat.game-over-zoom #catBody {
+            animation: zoomAttack 1.5s ease-in forwards;
+            z-index: 200;
+        }
+
+        @keyframes zoomAttack {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(6);
+                opacity: 0.8;
+            }
+        }
+
+        #brush {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            pointer-events: none;
+            display: none;
+            z-index: 10;
+            transform: translate(-50%, -50%);
+            will-change: transform;
+        }
+
+        #brush img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
+        }
+
+        .fur {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            pointer-events: none;
+            animation: furFloat 1.5s ease-out forwards;
+            z-index: 5;
+            filter: drop-shadow(0 0 8px rgba(255,255,255,0.8)) 
+                    drop-shadow(0 0 4px rgba(0,0,0,0.5))
+                    brightness(1.3) contrast(1.2);
+            will-change: transform, opacity;
+        }
+
+        .fur img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        @keyframes furFloat {
+            0% {
+                opacity: 1;
+                transform: translateY(0) rotate(0deg) scale(1);
+            }
+            50% {
+                opacity: 1;
+                transform: translateY(-50px) rotate(180deg) scale(1.2);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-120px) rotate(360deg) scale(0.8);
+            }
+        }
+
+        #scoreBoard {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.95);
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            border: 2px solid #e8e4d9;
+            z-index: 50;
+        }
+
+        #gameOver {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 300;
+            animation: fadeToBlack 1.5s ease-in forwards;
+        }
+
+        @keyframes fadeToBlack {
+            0% {
+                background: rgba(0,0,0,0);
+            }
+            100% {
+                background: rgba(0,0,0,1);
+            }
+        }
+
+        #gameOver.show {
+            display: flex;
+        }
+
+        #gameOverContent {
+            opacity: 0;
+            animation: fadeInContent 1s ease-in 1.5s forwards;
+        }
+
+        @keyframes fadeInContent {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        #gameOver h1 {
+            color: #ff0000;
+            font-size: 80px;
+            margin-bottom: 30px;
+            text-shadow: 4px 4px 0px rgba(0,0,0,0.8),
+                         8px 8px 0px rgba(139,0,0,0.5);
+            font-weight: bold;
+            letter-spacing: 5px;
+            font-family: 'Creepster', cursive;
+            transform: rotate(-2deg);
+        }
+
+        #gameOver p {
+            color: white;
+            font-size: 28px;
+            margin-bottom: 40px;
+        }
+
+        #restartBtn {
+            padding: 15px 50px;
+            font-size: 24px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            font-weight: bold;
+        }
+
+        #restartBtn:hover {
+            background: #45a049;
+            transform: scale(1.1);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.7);
+        }
+
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255,255,255,0.95);
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 16px;
+            color: #333;
+            text-align: center;
+            z-index: 50;
+            border: 2px solid #e8e4d9;
+        }
+
+        .shake {
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translate(-50%, -50%) rotate(0deg); }
+            10%, 30%, 50%, 70%, 90% { transform: translate(-50%, -50%) rotate(-5deg); }
+            20%, 40%, 60%, 80% { transform: translate(-50%, -50%) rotate(5deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="scoreBoard">점수: <span id="score">0</span></div>
+        
+        <div id="cat" class="sleeping">
+            <img id="catBody" src="1.png" alt="고양이">
+        </div>
+
+        <div id="brush">
+            <img src="빗.png" alt="빗">
+        </div>
+
+        <div id="instructions">
+            마우스를 움직여 고양이를 빗질하세요!<br>
+            경고가 뜨면 빗을 멈추세요!
+        </div>
+
+        <div id="gameOver">
+            <div id="gameOverContent">
+                <h1>YOU DIED</h1>
+                <p>최종 점수: <span id="finalScore">0</span>점</p>
+                <button id="restartBtn">다시 하기</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 게임 상태
+        const gameState = {
+            catState: 'sleeping',
+            furCollected: 0,
+            score: 0,
+            isGameOver: false,
+            lastMouseX: 0,
+            lastMouseY: 0,
+            mouseX: 0,
+            mouseY: 0,
+            isMouseOverCat: false,
+            totalDistance: 0,
+            lastFurDistance: 0,
+            isWarningActive: false,
+            warningTimeout: null,
+            canCheckMovement: false,
+            reactionTime: 600,
+            warningDuration: 1500,
+            animationFrameId: null
+        };
+
+        // DOM 요소
+        const catBody = document.getElementById('catBody');
+        const catDiv = document.getElementById('cat');
+        const brush = document.getElementById('brush');
+        const scoreElement = document.getElementById('score');
+        const gameOverScreen = document.getElementById('gameOver');
+        const finalScoreElement = document.getElementById('finalScore');
+        const restartBtn = document.getElementById('restartBtn');
+        const gameContainer = document.getElementById('gameContainer');
+
+        // 고양이 영역 캐싱
+        let catRect = catDiv.getBoundingClientRect();
+        const containerRect = gameContainer.getBoundingClientRect();
+
+        // 경고 확률 계산 함수
+        function getWarningChance() {
+            const score = gameState.score;
+            
+            if (score < 2) {
+                return 0.015;
+            } else if (score < 4) {
+                return 0.03;
+            } else if (score < 6) {
+                return 0.05;
+            } else if (score < 8) {
+                return 0.07;
+            } else if (score < 10) {
+                return 0.09;
+            } else {
+                return 0.09 + ((score - 10) * 0.003);
+            }
+        }
+
+        // 반응시간 계산 (점수에 따라 감소, 최소 200ms)
+        function updateReactionTime() {
+            const score = gameState.score;
+            const reduction = Math.floor(score / 2) * 40;
+            gameState.reactionTime = Math.max(200, 600 - reduction);
+        }
+
+        // 입력 처리 함수 (마우스/터치 공통)
+        function handleInput(clientX, clientY) {
+            gameState.mouseX = clientX - containerRect.left;
+            gameState.mouseY = clientY - containerRect.top;
+            
+            // 빗 위치 업데이트
+            brush.style.transform = `translate(${gameState.mouseX - 40}px, ${gameState.mouseY - 40}px)`;
+            brush.style.display = 'block';
+
+            // 고양이 위에 있는지 체크
+            gameState.isMouseOverCat = (
+                clientX >= catRect.left && clientX <= catRect.right &&
+                clientY >= catRect.top && clientY <= catRect.bottom
+            );
+        }
+
+        // 마우스 이벤트
+        gameContainer.addEventListener('mousemove', (e) => {
+            handleInput(e.clientX, e.clientY);
+        }, { passive: true });
+
+        gameContainer.addEventListener('mouseleave', () => {
+            brush.style.display = 'none';
+            gameState.isMouseOverCat = false;
+        });
+
+        // 터치 이벤트 추가
+        gameContainer.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            handleInput(touch.clientX, touch.clientY);
+        }, { passive: false });
+
+        gameContainer.addEventListener('touchend', () => {
+            brush.style.display = 'none';
+            gameState.isMouseOverCat = false;
+        }, { passive: true });
+
+        gameContainer.addEventListener('touchcancel', () => {
+            brush.style.display = 'none';
+            gameState.isMouseOverCat = false;
+        }, { passive: true });
+
+        // 게임 루프
+        function gameLoop() {
+            if (gameState.isGameOver) return;
+
+            const deltaX = gameState.mouseX - gameState.lastMouseX;
+            const deltaY = gameState.mouseY - gameState.lastMouseY;
+            const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+            if (gameState.isMouseOverCat && distance > 1) {
+                // 경고 상태 + 반응시간 지남 + 빗질 감지 -> 게임오버
+                if (gameState.catState === 'looking_away' && gameState.canCheckMovement) {
+                    changeCatState('alert');
+                    setTimeout(() => {
+                        endGame();
+                    }, 300);
+                    return;
+                }
+
+                // sleeping 상태에서만 빗질 가능
+                if (gameState.catState === 'sleeping') {
+                    gameState.totalDistance += distance;
+
+                    if (gameState.totalDistance - gameState.lastFurDistance >= 50) {
+                        collectFur(gameState.mouseX, gameState.mouseY);
+                        gameState.lastFurDistance = gameState.totalDistance;
+
+                        const warningChance = getWarningChance();
+                        if (Math.random() < warningChance && !gameState.isWarningActive) {
+                            triggerWarning();
+                        }
+                    }
+                }
+            }
+
+            gameState.lastMouseX = gameState.mouseX;
+            gameState.lastMouseY = gameState.mouseY;
+
+            gameState.animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        // 경고 발생
+        function triggerWarning() {
+            if (gameState.catState !== 'sleeping' || gameState.isWarningActive) return;
+            
+            gameState.isWarningActive = true;
+            gameState.canCheckMovement = false;
+            
+            updateReactionTime();
+            
+            // 2.png로 경고 표시
+            changeCatState('looking_away');
+            
+            // 반응시간 후 움직임 감지 시작
+            setTimeout(() => {
+                if (gameState.catState === 'looking_away' && !gameState.isGameOver) {
+                    gameState.canCheckMovement = true;
+                }
+            }, gameState.reactionTime);
+            
+            // 경고 지속시간 후 자동 복귀
+            gameState.warningTimeout = setTimeout(() => {
+                if (gameState.catState === 'looking_away' && !gameState.isGameOver) {
+                    changeCatState('sleeping');
+                    gameState.isWarningActive = false;
+                    gameState.canCheckMovement = false;
+                }
+            }, gameState.warningDuration);
+        }
+
+        // 털 수집
+        function collectFur(x, y) {
+            gameState.furCollected++;
+            gameState.score = Math.floor(gameState.furCollected / 10);
+            scoreElement.textContent = gameState.score;
+
+            const fur = document.createElement('div');
+            fur.className = 'fur';
+            fur.innerHTML = '<img src="털.png" alt="털">';
+            fur.style.left = x + 'px';
+            fur.style.top = y + 'px';
+            gameContainer.appendChild(fur);
+
+            setTimeout(() => {
+                fur.remove();
+            }, 1500);
+        }
+
+        // 고양이 상태 변경
+        function changeCatState(newState) {
+            if (gameState.isGameOver) return;
+
+            gameState.catState = newState;
+            catDiv.className = newState;
+
+            // 상태에 따라 이미지 변경
+            if (newState === 'sleeping') {
+                catBody.src = '1.png';
+            } else if (newState === 'looking_away') {
+                catBody.src = '2.png';
+            } else if (newState === 'alert') {
+                catBody.src = '3.png';
+                catDiv.classList.add('shake');
+                setTimeout(() => {
+                    catDiv.classList.remove('shake');
+                }, 500);
+            }
+        }
+
+        // 게임 오버
+        function endGame() {
+            if (gameState.isGameOver) return;
+            
+            gameState.isGameOver = true;
+            
+            if (gameState.animationFrameId) {
+                cancelAnimationFrame(gameState.animationFrameId);
+            }
+            
+            if (gameState.warningTimeout) {
+                clearTimeout(gameState.warningTimeout);
+            }
+            
+            // 3.png 확대 애니메이션
+            catDiv.className = 'game-over-zoom';
+            catBody.src = '3.png';
+            
+            gameOverScreen.classList.add('show');
+            finalScoreElement.textContent = gameState.score;
+        }
+
+        // 게임 시작
+        function startGame() {
+            gameState.catState = 'sleeping';
+            gameState.furCollected = 0;
+            gameState.score = 0;
+            gameState.isGameOver = false;
+            gameState.lastMouseX = 0;
+            gameState.lastMouseY = 0;
+            gameState.mouseX = 0;
+            gameState.mouseY = 0;
+            gameState.isMouseOverCat = false;
+            gameState.totalDistance = 0;
+            gameState.lastFurDistance = 0;
+            gameState.isWarningActive = false;
+            gameState.canCheckMovement = false;
+            gameState.reactionTime = 600;
+            gameState.warningDuration = 1500;
+            
+            if (gameState.animationFrameId) {
+                cancelAnimationFrame(gameState.animationFrameId);
+            }
+            
+            if (gameState.warningTimeout) {
+                clearTimeout(gameState.warningTimeout);
+                gameState.warningTimeout = null;
+            }
+
+            scoreElement.textContent = '0';
+            gameOverScreen.classList.remove('show');
+            catDiv.className = 'sleeping';
+            catBody.src = '1.png';
+
+            const remainingFurs = document.querySelectorAll('.fur');
+            remainingFurs.forEach(fur => fur.remove());
+
+            // 고양이 영역 다시 계산
+            catRect = catDiv.getBoundingClientRect();
+
+            gameState.animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        restartBtn.addEventListener('click', startGame);
+        startGame();
+    </script>
+</body>
+</html>
